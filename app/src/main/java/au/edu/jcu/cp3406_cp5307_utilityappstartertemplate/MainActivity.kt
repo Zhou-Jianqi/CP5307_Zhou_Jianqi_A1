@@ -5,12 +5,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,13 +49,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.CP3406_CP5603UtilityAppStarterTemplateTheme
-import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.FABBlue
+import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.NightSkyBlack
 import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.NotebookBlue
+import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.TaroPurple
+import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.TomatoRed
+
+private data class ThemeOption(
+    val name: String,
+    val color: Color
+)
+
+private val themeOptions = listOf(
+    ThemeOption("Taro Purple", TaroPurple),
+    ThemeOption("NotebookBlue", NotebookBlue),
+    ThemeOption("Tomato Red", TomatoRed),
+    ThemeOption("Night Sky Black", NightSkyBlack)
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +96,7 @@ fun UtilityAppPreview() {
 fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
     var selectedTab by remember { mutableStateOf("Home") }
     var selectedNote by remember { mutableStateOf<Note?>(null) }
+    var selectedThemeColor by remember { mutableStateOf(NotebookBlue) }
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
 
     if (selectedNote != null) {
@@ -85,6 +106,7 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                 viewModel.updateNote(selectedNote!!.copy(title = updatedTitle, content = updatedContent))
                 selectedNote = null
             },
+            themeColor = selectedThemeColor,
             selectedTab = selectedTab,
             onTabSelected = { selectedTab = it }
         )
@@ -92,7 +114,7 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
         Scaffold(
             topBar = {
                 Surface(
-                    color = NotebookBlue,
+                    color = selectedThemeColor,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -105,16 +127,18 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                 }
             },
             floatingActionButton = {
-                FloatingActionButton(
-                    onClick = {
-                        viewModel.addNote("<New Note>", "")
-                    },
-                    containerColor = FABBlue,
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                    modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add note")
+                if (selectedTab == "Home") {
+                    FloatingActionButton(
+                        onClick = {
+                            viewModel.addNote("<New Note>", "")
+                        },
+                        containerColor = selectedThemeColor,
+                        contentColor = Color.White,
+                        shape = CircleShape,
+                        modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add note")
+                    }
                 }
             },
             bottomBar = {
@@ -141,7 +165,10 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                         onDeleteNote = { viewModel.deleteNote(it) },
                         onNoteClick = { selectedNote = it }
                     )
-                    "Settings" -> SettingsScreen()
+                    "Settings" -> SettingsScreen(
+                        selectedThemeColor = selectedThemeColor,
+                        onThemeColorSelected = { selectedThemeColor = it }
+                    )
                 }
             }
         }
@@ -254,6 +281,7 @@ fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit, onNoteClick: (No
 fun EditNoteScreen(
     note: Note,
     onBack: (String, String) -> Unit,
+    themeColor: Color,
     selectedTab: String,
     onTabSelected: (String) -> Unit
 ) {
@@ -262,7 +290,7 @@ fun EditNoteScreen(
     Scaffold(
         topBar = {
             Surface(
-                color = NotebookBlue,
+                color = themeColor,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -285,8 +313,8 @@ fun EditNoteScreen(
                     }
                     onBack(updatedTitle, content)
                 },
-                containerColor = FABBlue,
-                contentColor = Color.Black,
+                containerColor = themeColor,
+                contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
             ) {
@@ -351,7 +379,10 @@ fun EditNoteScreen(
 }
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    selectedThemeColor: Color,
+    onThemeColorSelected: (Color) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -359,5 +390,40 @@ fun SettingsScreen() {
     ) {
         Text("Settings Screen", style = MaterialTheme.typography.headlineMedium)
         Text("The settings page allows adjustment of theme colors")
+        Spacer(modifier = Modifier.height(28.dp))
+        Text("Theme Color", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            themeOptions.forEach { option ->
+                val isSelected = selectedThemeColor == option.color
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onThemeColorSelected(option.color) }
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(option.color, CircleShape)
+                    ) {
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .border(2.dp, Color.White, CircleShape)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = option.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
     }
 }
