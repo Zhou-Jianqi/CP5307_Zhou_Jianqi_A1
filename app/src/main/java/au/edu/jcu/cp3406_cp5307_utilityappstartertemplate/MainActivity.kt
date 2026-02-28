@@ -5,15 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
@@ -72,57 +75,74 @@ fun UtilityAppPreview() {
 @Composable
 fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
     var selectedTab by remember { mutableStateOf("Home") }
+    var selectedNote by remember { mutableStateOf<Note?>(null) }
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
 
-    Scaffold(
-        topBar = {
-            Surface(
-                color = NotebookBlue,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Notebook",
-                    color = Color.White,
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp).padding(top = 24.dp)
-                )
+    if (selectedNote != null) {
+        EditNoteScreen(
+            note = selectedNote!!,
+            onBack = { updatedTitle, updatedContent ->
+                viewModel.updateNote(selectedNote!!.copy(title = updatedTitle, content = updatedContent))
+                selectedNote = null
+            },
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                Surface(
+                    color = NotebookBlue,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Notebook",
+                        color = Color.White,
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp).padding(top = 24.dp)
+                    )
+                }
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.addNote("<New Note>", "")
+                    },
+                    containerColor = FABBlue,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add note")
+                }
+            },
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Home page") },
+                        label = { Text("Home") },
+                        selected = selectedTab == "Home",
+                        onClick = { selectedTab = "Home" }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings page") },
+                        label = { Text("Settings") },
+                        selected = selectedTab == "Settings",
+                        onClick = { selectedTab = "Settings" }
+                    )
+                }
             }
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    viewModel.addNote("<Note title>", "<Note content preview>\nSecond line of content")
-                },
-                containerColor = FABBlue,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add note")
-            }
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Home page") },
-                    label = { Text("Home") },
-                    selected = selectedTab == "Home",
-                    onClick = { selectedTab = "Home" }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings page") },
-                    label = { Text("Settings") },
-                    selected = selectedTab == "Settings",
-                    onClick = { selectedTab = "Settings" }
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                "Home" -> HomeScreen(notes = notes, onDeleteNote = { viewModel.deleteNote(it) })
-                "Settings" -> SettingsScreen()
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                when (selectedTab) {
+                    "Home" -> HomeScreen(
+                        notes = notes,
+                        onDeleteNote = { viewModel.deleteNote(it) },
+                        onNoteClick = { selectedNote = it }
+                    )
+                    "Settings" -> SettingsScreen()
+                }
             }
         }
     }
@@ -130,11 +150,11 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit) {
+fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit, onNoteClick: (Note) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            //.padding(16.dp)
+        //.padding(16.dp)
     ) {
         if (notes.isEmpty()) {
             Text(
@@ -198,7 +218,9 @@ fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit) {
                             enableDismissFromStartToEnd = false,
                             content = {
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onNoteClick(note) },
                                     color = Color(0xFFF5F5F5)
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
@@ -210,7 +232,7 @@ fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit) {
                                             )
                                         )
                                         Text(
-                                            text = note.content.lines().firstOrNull() ?: "",
+                                            text = note.content.lines().getOrNull(1) ?: "",
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontSize = 24.sp,
                                                 fontWeight = FontWeight.Normal
@@ -224,6 +246,106 @@ fun HomeScreen(notes: List<Note>, onDeleteNote: (Note) -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun EditNoteScreen(
+    note: Note,
+    onBack: (String, String) -> Unit,
+    selectedTab: String,
+    onTabSelected: (String) -> Unit
+) {
+    var content by remember { mutableStateOf(note.content) }
+
+    Scaffold(
+        topBar = {
+            Surface(
+                color = NotebookBlue,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Notebook",
+                    color = Color.White,
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(16.dp).padding(top = 24.dp)
+                )
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    val lines = content.lines()
+                    val updatedTitle = if (lines.isNotEmpty() && lines[0].isNotBlank()) {
+                        lines[0]
+                    } else {
+                        note.title
+                    }
+                    onBack(updatedTitle, content)
+                },
+                containerColor = FABBlue,
+                contentColor = Color.Black,
+                shape = CircleShape,
+                modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home page") },
+                    label = { Text("Home") },
+                    selected = selectedTab == "Home",
+                    onClick = { onTabSelected("Home") }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings page") },
+                    label = { Text("Settings") },
+                    selected = selectedTab == "Settings",
+                    onClick = { onTabSelected("Settings") }
+                )
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            val lines = content.lines()
+            val title = if (lines.isNotEmpty()) lines[0] else ""
+
+            if (title.isNotBlank()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
+            BasicTextField(
+                value = content,
+                onValueChange = { content = it },
+                modifier = Modifier.fillMaxSize(),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                decorationBox = { innerTextField ->
+                    if (content.isEmpty()) {
+                        Text(
+                            text = "Start to edit...",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                            color = Color.LightGray
+                        )
+                    }
+                    innerTextField()
+                }
+            )
         }
     }
 }
