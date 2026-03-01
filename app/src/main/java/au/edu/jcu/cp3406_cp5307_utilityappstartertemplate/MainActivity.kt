@@ -74,6 +74,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import androidx.core.content.edit
 
 private data class ThemeOption(
     val name: String,
@@ -134,13 +135,19 @@ fun UtilityAppPreview() {
 fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
     var selectedTab by remember { mutableStateOf("Home") }
     var selectedNote by remember { mutableStateOf<Note?>(null) }
-    var selectedThemeColor by remember { mutableStateOf(NotebookBlue) }
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE) }
+
+    val savedColorName = remember { sharedPreferences.getString("theme_color", "NotebookBlue") }
+    val initialColor = remember {
+        themeOptions.find { it.name == savedColorName }?.color ?: NotebookBlue
+    }
+    var selectedThemeColor by remember { mutableStateOf(initialColor) }
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
     var showQuoteDialog by remember { mutableStateOf(false) }
     var quoteText by remember { mutableStateOf("") }
     var quoteAuthor by remember { mutableStateOf("") }
     var isLoadingQuote by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     if (selectedNote != null) {
@@ -250,7 +257,11 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                     )
                     "Settings" -> SettingsScreen(
                         selectedThemeColor = selectedThemeColor,
-                        onThemeColorSelected = { selectedThemeColor = it }
+                        onThemeColorSelected = { color ->
+                            selectedThemeColor = color
+                            val colorName = themeOptions.find { it.color == color }?.name
+                            sharedPreferences.edit { putString("theme_color", colorName) }
+                        }
                     )
                 }
             }
