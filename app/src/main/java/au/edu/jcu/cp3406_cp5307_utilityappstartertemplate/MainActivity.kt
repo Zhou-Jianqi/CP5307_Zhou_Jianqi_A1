@@ -1,5 +1,8 @@
 package au.edu.jcu.cp3406_cp5307_utilityappstartertemplate
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +30,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
@@ -48,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,6 +67,13 @@ import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.NightSkyBlack
 import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.NotebookBlue
 import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.TaroPurple
 import au.edu.jcu.cp3406_cp5307_utilityappstartertemplate.ui.theme.TomatoRed
+import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
 
 private data class ThemeOption(
     val name: String,
@@ -71,6 +86,29 @@ private val themeOptions = listOf(
     ThemeOption("Tomato Red", TomatoRed),
     ThemeOption("Night Sky Black", NightSkyBlack)
 )
+
+data class QuoteResponse(
+    @SerializedName("quote") val quote: String,
+    @SerializedName("author") val author: String
+)
+
+interface QuoteApi {
+    @GET("quotes/random")
+    suspend fun getRandomQuote(): QuoteResponse
+}
+
+object RetrofitInstance {
+    private val retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://dummyjson.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    val api: QuoteApi by lazy {
+        retrofit.create(QuoteApi::class.java)
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,6 +136,12 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
     var selectedNote by remember { mutableStateOf<Note?>(null) }
     var selectedThemeColor by remember { mutableStateOf(NotebookBlue) }
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
+    var showQuoteDialog by remember { mutableStateOf(false) }
+    var quoteText by remember { mutableStateOf("") }
+    var quoteAuthor by remember { mutableStateOf("") }
+    var isLoadingQuote by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     if (selectedNote != null) {
         EditNoteScreen(
@@ -128,16 +172,55 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
             },
             floatingActionButton = {
                 if (selectedTab == "Home") {
-                    FloatingActionButton(
-                        onClick = {
-                            viewModel.addNote("<New Note>", "")
-                        },
-                        containerColor = selectedThemeColor,
-                        contentColor = Color.White,
-                        shape = CircleShape,
-                        modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add note")
+                        FloatingActionButton(
+                            onClick = {
+                                isLoadingQuote = true
+                                scope.launch {
+                                    try {
+                                        val quote = withContext(Dispatchers.IO) {
+                                            RetrofitInstance.api.getRandomQuote()
+                                        }
+                                        quoteText = quote.quote
+                                        quoteAuthor = quote.author
+                                        showQuoteDialog = true
+                                    } catch (e: Exception) {
+                                        quoteText = "Failed to load quote"
+                                        quoteAuthor = ""
+                                        showQuoteDialog = true
+                                    } finally {
+                                        isLoadingQuote = false
+                                    }
+                                }
+                            },
+                            containerColor = selectedThemeColor,
+                            contentColor = Color.White,
+                            shape = CircleShape,
+                            modifier = Modifier.padding(bottom = 16.dp, start = 45.dp)
+                        ) {
+                            if (isLoadingQuote) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            } else {
+                                Text("Q", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        FloatingActionButton(
+                            onClick = {
+                                viewModel.addNote("<New Note>", "")
+                            },
+                            containerColor = selectedThemeColor,
+                            contentColor = Color.White,
+                            shape = CircleShape,
+                            modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add note")
+                        }
                     }
                 }
             },
@@ -171,6 +254,46 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                     )
                 }
             }
+        }
+
+        if (showQuoteDialog) {
+            AlertDialog(
+                onDismissRequest = { showQuoteDialog = false },
+                title = { Text("Famous Quote") },
+                text = {
+                    Column {
+                        Text(
+                            text = "\"$quoteText\"",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        if (quoteAuthor.isNotEmpty()) {
+                            Text(
+                                text = "- $quoteAuthor",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("quote", "$quoteText - $quoteAuthor")
+                            clipboard.setPrimaryClip(clip)
+                            showQuoteDialog = false
+                        }
+                    ) {
+                        Text("Copy")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showQuoteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
