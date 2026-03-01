@@ -183,50 +183,74 @@ fun UtilityApp(viewModel: NoteViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        FloatingActionButton(
-                            onClick = {
-                                isLoadingQuote = true
-                                scope.launch {
-                                    try {
-                                        val quote = withContext(Dispatchers.IO) {
-                                            RetrofitInstance.api.getRandomQuote()
-                                        }
-                                        quoteText = quote.quote
-                                        quoteAuthor = quote.author
-                                        showQuoteDialog = true
-                                    } catch (e: Exception) {
-                                        quoteText = "Failed to load quote"
-                                        quoteAuthor = ""
-                                        showQuoteDialog = true
-                                    } finally {
-                                        isLoadingQuote = false
-                                    }
-                                }
-                            },
-                            containerColor = selectedThemeColor,
-                            contentColor = Color.White,
-                            shape = CircleShape,
-                            modifier = Modifier.padding(bottom = 16.dp, start = 45.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(start = 45.dp)
                         ) {
-                            if (isLoadingQuote) {
-                                CircularProgressIndicator(
-                                    color = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            } else {
-                                Text("Q", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "Quote",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            FloatingActionButton(
+                                onClick = {
+                                    isLoadingQuote = true
+                                    scope.launch {
+                                        try {
+                                            val quote = withContext(Dispatchers.IO) {
+                                                RetrofitInstance.api.getRandomQuote()
+                                            }
+                                            quoteText = quote.quote
+                                            quoteAuthor = quote.author
+                                            showQuoteDialog = true
+                                        } catch (e: Exception) {
+                                            quoteText = "Failed to load quote"
+                                            quoteAuthor = ""
+                                            showQuoteDialog = true
+                                        } finally {
+                                            isLoadingQuote = false
+                                        }
+                                    }
+                                },
+                                containerColor = selectedThemeColor,
+                                contentColor = Color.White,
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .padding(bottom = 13.dp)
+                                    .size(48.dp)
+                            ) {
+                                if (isLoadingQuote) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                } else {
+                                    Text("Q", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
-                        FloatingActionButton(
-                            onClick = {
-                                viewModel.addNote("<New Note>", "")
-                            },
-                            containerColor = selectedThemeColor,
-                            contentColor = Color.White,
-                            shape = CircleShape,
-                            modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(end = 8.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add note")
+                            Text(
+                                text = "Add Note",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            FloatingActionButton(
+                                onClick = {
+                                    viewModel.addNote("<New Note>", "")
+                                },
+                                containerColor = selectedThemeColor,
+                                contentColor = Color.White,
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .size(48.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add note")
+                            }
                         }
                     }
                 }
@@ -437,22 +461,34 @@ fun EditNoteScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    val lines = content.lines()
-                    val updatedTitle = if (lines.isNotEmpty() && lines[0].isNotBlank()) {
-                        lines[0]
-                    } else {
-                        note.title
-                    }
-                    onBack(updatedTitle, content)
-                },
-                containerColor = themeColor,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(end = 8.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Text(
+                    text = "Back",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                FloatingActionButton(
+                    onClick = {
+                        val lines = content.lines()
+                        val updatedTitle = if (lines.isNotEmpty() && lines[0].isNotBlank()) {
+                            lines[0]
+                        } else {
+                            note.title
+                        }
+                        onBack(updatedTitle, content)
+                    },
+                    containerColor = themeColor,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .size(48.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
             }
         },
         bottomBar = {
@@ -553,7 +589,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = option.name,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         textAlign = TextAlign.Center
                     )
                 }
